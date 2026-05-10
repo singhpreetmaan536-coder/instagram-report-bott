@@ -1,4 +1,4 @@
-
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -307,7 +307,7 @@
     function verifyUser() {
 
       const input = document.getElementById('telegram_id');
-      const userId = parseInt(input.value.trim());
+      const userId = Number(input.value.trim());
       const resultDiv = document.getElementById('login-result');
 
       if (!userId) {
@@ -318,7 +318,10 @@
       currentUserId = userId;
       isAdmin = ADMIN_IDS.includes(userId);
 
-      if (isAdmin || allowedUsers.has(userId)) {
+      // FIXED USER CHECK
+      const hasAccess = isAdmin || [...allowedUsers].map(Number).includes(userId);
+
+      if (hasAccess) {
 
         const currentDevice = getDeviceId();
         const savedDevice = localStorage.getItem(`user_${userId}`);
@@ -676,4 +679,4 @@
   </script>
 </body>
 </html>
-
+```
