@@ -1,4 +1,4 @@
-
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -293,8 +293,9 @@
       const saved = localStorage.getItem('allowedUsers');
 
       if (saved) {
-        allowedUsers = new Set(JSON.parse(saved));
+        allowedUsers = new Set(JSON.parse(saved).map(id => Number(id)));
       }
+    }
     }
 
     // ================== SAVE USERS ==================
@@ -414,7 +415,7 @@
 
     // ================== OPEN METHODS CHANNEL ==================
     function openMethods() {
-      window.open('https://t.me/+lMNelbcJKMk0N2Iy', '_blank');
+      window.open('https://t.me/YOUR_CHANNEL_USERNAME', '_blank');
     }
 
     // ================== MONITOR SYSTEM ==================
@@ -638,7 +639,7 @@
 
         table.scrollTop = table.scrollHeight;
 
-      }, 1500);
+      }, 650);
     }
 
     // ================== STOP REPORTING ==================
@@ -675,4 +676,3 @@
   </script>
 </body>
 </html>
-```
