@@ -143,7 +143,6 @@
             class="mx-auto rounded-2xl mb-10 w-72 shadow-2xl"
           />
 
-          <!-- BUTTONS -->
           <div class="flex flex-wrap justify-center gap-4">
 
             <button
@@ -261,7 +260,7 @@
     // ================== ADMIN IDS ==================
     const ADMIN_IDS = [7145835109, 7968968395];
 
-    // SIMPLE ARRAY for allowed users (no Set confusion)
+    // Allowed users list
     let allowedUsers = [];
     let currentUserId = null;
     let isAdmin = false;
@@ -277,13 +276,12 @@
       "Sale of firearms", "False information", "Fraud", "Violent threat"
     ];
 
-    // ================== LOAD USERS from localStorage ==================
+    // ================== LOAD USERS ==================
     function loadUsers() {
       const saved = localStorage.getItem('allowedUsers');
       if (saved) {
         try {
           allowedUsers = JSON.parse(saved);
-          // Ensure all are numbers
           allowedUsers = allowedUsers.map(id => Number(id));
         } catch(e) {
           allowedUsers = [];
@@ -300,31 +298,7 @@
       console.log("Saved users:", allowedUsers);
     }
 
-    // ================== DEVICE ID ==================
-    function getDeviceId() {
-      let deviceId = localStorage.getItem('deviceId');
-      if (!deviceId) {
-        deviceId = 'device-' + Math.random().toString(36).substring(2, 15) + Date.now();
-        localStorage.setItem('deviceId', deviceId);
-      }
-      return deviceId;
-    }
-
-    // ================== CHECK DEVICE ACCESS ==================
-    function canLoginFromDevice(userId) {
-      const deviceId = getDeviceId();
-      const storageKey = `user_device_${userId}`;
-      const savedDevice = localStorage.getItem(storageKey);
-      
-      if (!savedDevice) {
-        localStorage.setItem(storageKey, deviceId);
-        return true;
-      }
-      
-      return savedDevice === deviceId;
-    }
-
-    // ================== VERIFY ACCESS - SIMPLE AND CLEAR ==================
+    // ================== VERIFY ACCESS - NO DEVICE LOCK ==================
     function verifyUser() {
       const input = document.getElementById('telegram_id');
       const userId = Number(input.value.trim());
@@ -338,7 +312,7 @@
       currentUserId = userId;
       isAdmin = ADMIN_IDS.includes(userId);
       
-      // SIMPLE ACCESS CHECK
+      // ACCESS CHECK - sirf ye check karega ki user allowed hai ya nahi
       let hasAccess = false;
       
       if (isAdmin) {
@@ -361,12 +335,7 @@
         return;
       }
 
-      // Check device restriction
-      if (!canLoginFromDevice(userId)) {
-        resultDiv.innerHTML = `<p class="text-red-500">❌ Access Denied! This user ID is already active on another device.</p>`;
-        return;
-      }
-
+      // NO DEVICE CHECK - ab koi bhi device se login ho sakta hai
       resultDiv.innerHTML = `<p class="text-green-500">✅ Access Granted! Redirecting...</p>`;
 
       setTimeout(() => {
@@ -397,7 +366,6 @@
         return;
       }
       
-      // Check if user already exists
       if (allowedUsers.includes(userId)) {
         alert(`User ${userId} already has access!`);
         return;
@@ -408,7 +376,7 @@
       renderUsers();
       input.value = '';
       
-      alert(`✅ User ${userId} added successfully! They can now login.`);
+      alert(`✅ User ${userId} added successfully! They can now login from any device.`);
     }
 
     // ================== REMOVE USER ==================
@@ -418,7 +386,6 @@
         allowedUsers.splice(index, 1);
         saveUsers();
         renderUsers();
-        localStorage.removeItem(`user_device_${userId}`);
         alert(`User ${userId} removed successfully`);
       }
     }
