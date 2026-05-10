@@ -247,7 +247,22 @@
       localStorage.setItem('allowedUsers', JSON.stringify([...allowedUsers]));
     }
 
-    // ================== VERIFY ACCESS ==================$1if (isAdmin || allowedUsers.has(userId)) {
+    // ================== VERIFY ACCESS ==================
+    function verifyUser() {
+
+      const input = document.getElementById('telegram_id');
+      const userId = parseInt(input.value.trim());
+      const resultDiv = document.getElementById('login-result');
+
+      if (!userId) {
+        resultDiv.innerHTML = `<p class="text-red-500">❌ Please enter your Telegram User ID</p>`;
+        return;
+      }
+
+      currentUserId = userId;
+      isAdmin = ADMIN_IDS.includes(userId);
+
+      if (isAdmin || allowedUsers.has(userId)) {
 
         const currentDevice = getDeviceId();
         const savedDevice = localStorage.getItem(`user_${userId}`);
@@ -257,7 +272,7 @@
           localStorage.setItem(`user_${userId}`, currentDevice);
         }
 
-        // DIFFERENT DEVICE DETECTED
+        // SECOND DEVICE BLOCK
         if (savedDevice && savedDevice !== currentDevice) {
           resultDiv.innerHTML = `<p class="text-red-500">❌ Access Denied! User already active on another device.</p>`;
           return;
@@ -271,7 +286,6 @@
           document.getElementById('main-app').classList.remove('hidden');
           document.getElementById('reporting-section').classList.remove('hidden');
 
-          // SHOW ADMIN PANEL ONLY TO ADMINS
           if (isAdmin) {
             document.getElementById('admin-panel').classList.remove('hidden');
             renderUsers();
