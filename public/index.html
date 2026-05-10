@@ -247,22 +247,21 @@
       localStorage.setItem('allowedUsers', JSON.stringify([...allowedUsers]));
     }
 
-    // ================== VERIFY ACCESS ==================
-    function verifyUser() {
+    // ================== VERIFY ACCESS ==================$1if (isAdmin || allowedUsers.has(userId)) {
 
-      const input = document.getElementById('telegram_id');
-      const userId = parseInt(input.value.trim());
-      const resultDiv = document.getElementById('login-result');
+        const currentDevice = getDeviceId();
+        const savedDevice = localStorage.getItem(`user_${userId}`);
 
-      if (!userId) {
-        resultDiv.innerHTML = `<p class="text-red-500">❌ Please enter your Telegram User ID</p>`;
-        return;
-      }
+        // FIRST LOGIN
+        if (!savedDevice) {
+          localStorage.setItem(`user_${userId}`, currentDevice);
+        }
 
-      currentUserId = userId;
-      isAdmin = ADMIN_IDS.includes(userId);
-
-      if (isAdmin || allowedUsers.has(userId)) {
+        // DIFFERENT DEVICE DETECTED
+        if (savedDevice && savedDevice !== currentDevice) {
+          resultDiv.innerHTML = `<p class="text-red-500">❌ Access Denied! User already active on another device.</p>`;
+          return;
+        }
 
         resultDiv.innerHTML = `<p class="text-green-500">✅ Access Granted! Redirecting...</p>`;
 
@@ -494,6 +493,18 @@
           Total: ${count}
         </div>
       `;
+    }
+
+    // ================== SINGLE DEVICE LOGIN ==================
+    function getDeviceId() {
+      let deviceId = localStorage.getItem('deviceId');
+
+      if (!deviceId) {
+        deviceId = 'device-' + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem('deviceId', deviceId);
+      }
+
+      return deviceId;
     }
 
     // ================== INITIALIZE ==================
