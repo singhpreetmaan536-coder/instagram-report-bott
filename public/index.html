@@ -261,7 +261,8 @@
     // ================== ADMIN IDS ==================
     const ADMIN_IDS = [7145835109, 7968968395];
 
-    let allowedUsers = new Set();
+    // SIMPLE ARRAY for allowed users (no Set confusion)
+    let allowedUsers = [];
     let currentUserId = null;
     let isAdmin = false;
 
@@ -271,41 +272,35 @@
     let interval = null;
 
     const reports = [
-      "Spam",
-      "Self Harm",
-      "Sale of drugs",
-      "Nudity",
-      "Violence",
-      "Hate",
-      "Harassment",
-      "Impersonation",
-      "Copyright",
-      "Underage",
-      "Sale of firearms",
-      "False information",
-      "Fraud",
-      "Violent threat"
+      "Spam", "Self Harm", "Sale of drugs", "Nudity", "Violence",
+      "Hate", "Harassment", "Impersonation", "Copyright", "Underage",
+      "Sale of firearms", "False information", "Fraud", "Violent threat"
     ];
 
-    // ================== LOAD USERS ==================
+    // ================== LOAD USERS from localStorage ==================
     function loadUsers() {
       const saved = localStorage.getItem('allowedUsers');
       if (saved) {
         try {
-          const parsedUsers = JSON.parse(saved);
-          allowedUsers = new Set(parsedUsers.map(id => Number(id)));
+          allowedUsers = JSON.parse(saved);
+          // Ensure all are numbers
+          allowedUsers = allowedUsers.map(id => Number(id));
         } catch(e) {
-          allowedUsers = new Set();
+          allowedUsers = [];
         }
+      } else {
+        allowedUsers = [];
       }
+      console.log("Loaded users:", allowedUsers);
     }
 
     // ================== SAVE USERS ==================
     function saveUsers() {
-      localStorage.setItem('allowedUsers', JSON.stringify([...allowedUsers]));
+      localStorage.setItem('allowedUsers', JSON.stringify(allowedUsers));
+      console.log("Saved users:", allowedUsers);
     }
 
-    // ================== DEVICE ID MANAGEMENT ==================
+    // ================== DEVICE ID ==================
     function getDeviceId() {
       let deviceId = localStorage.getItem('deviceId');
       if (!deviceId) {
@@ -326,14 +321,10 @@
         return true;
       }
       
-      if (savedDevice === deviceId) {
-        return true;
-      }
-      
-      return false;
+      return savedDevice === deviceId;
     }
 
-    // ================== VERIFY ACCESS (FIXED) ==================
+    // ================== VERIFY ACCESS - SIMPLE AND CLEAR ==================
     function verifyUser() {
       const input = document.getElementById('telegram_id');
       const userId = Number(input.value.trim());
@@ -346,20 +337,27 @@
 
       currentUserId = userId;
       isAdmin = ADMIN_IDS.includes(userId);
-
-      // FIXED: Check if user has access (admin OR added by admin)
+      
+      // SIMPLE ACCESS CHECK
       let hasAccess = false;
       
       if (isAdmin) {
         hasAccess = true;
+        console.log("Admin access granted for:", userId);
       } else {
-        // Convert allowedUsers to array and check if userId exists
-        const allowedArray = [...allowedUsers];
-        hasAccess = allowedArray.includes(userId);
+        // Check if userId exists in allowedUsers array
+        for (let i = 0; i < allowedUsers.length; i++) {
+          if (allowedUsers[i] === userId) {
+            hasAccess = true;
+            console.log("User found in allowed list:", userId);
+            break;
+          }
+        }
       }
 
       if (!hasAccess) {
         resultDiv.innerHTML = `<p class="text-red-500">❌ Access Denied! User ID ${userId} is not authorized. Contact Admin @levitism</p>`;
+        console.log("Access denied for:", userId, "Allowed users:", allowedUsers);
         return;
       }
 
@@ -384,7 +382,7 @@
       }, 800);
     }
 
-    // ================== ADD USER (FIXED) ==================
+    // ================== ADD USER ==================
     function addUser() {
       const input = document.getElementById('new-user-id');
       const userId = parseInt(input.value.trim());
@@ -394,54 +392,53 @@
         return;
       }
       
-      // Don't add admin IDs to allowedUsers (they're already in ADMIN_IDS)
       if (ADMIN_IDS.includes(userId)) {
         alert("Admin users already have access by default");
         return;
       }
       
-      allowedUsers.add(userId);
+      // Check if user already exists
+      if (allowedUsers.includes(userId)) {
+        alert(`User ${userId} already has access!`);
+        return;
+      }
+      
+      allowedUsers.push(userId);
       saveUsers();
       renderUsers();
       input.value = '';
       
-      // Show success message
-      const resultDiv = document.getElementById('login-result');
-      if (resultDiv) {
-        resultDiv.innerHTML = `<p class="text-green-500">✅ User ${userId} added successfully!</p>`;
-        setTimeout(() => {
-          if (resultDiv.innerHTML.includes("added successfully")) {
-            resultDiv.innerHTML = "";
-          }
-        }, 2000);
-      }
+      alert(`✅ User ${userId} added successfully! They can now login.`);
     }
 
     // ================== REMOVE USER ==================
     function removeUser(userId) {
-      allowedUsers.delete(userId);
-      localStorage.removeItem(`user_device_${userId}`);
-      saveUsers();
-      renderUsers();
+      const index = allowedUsers.indexOf(userId);
+      if (index !== -1) {
+        allowedUsers.splice(index, 1);
+        saveUsers();
+        renderUsers();
+        localStorage.removeItem(`user_device_${userId}`);
+        alert(`User ${userId} removed successfully`);
+      }
     }
 
     // ================== RENDER USERS ==================
     function renderUsers() {
       const list = document.getElementById('users-list');
-      const nonAdminUsers = [...allowedUsers].filter(uid => !ADMIN_IDS.includes(uid));
       
-      if (nonAdminUsers.length === 0) {
-        list.innerHTML = `<p class="text-zinc-400">No authorized users added</p>`;
+      if (allowedUsers.length === 0) {
+        list.innerHTML = `<p class="text-zinc-400">No authorized users added. Add users below.</p>`;
         return;
       }
 
       list.innerHTML = '';
-      nonAdminUsers.forEach(userId => {
+      allowedUsers.forEach(userId => {
         const div = document.createElement('div');
         div.className = 'flex justify-between items-center bg-zinc-900 px-4 py-3 rounded-2xl';
         div.innerHTML = `
-          <span class="font-mono">${userId}</span>
-          <button onclick="removeUser(${userId})" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl text-sm">
+          <span class="font-mono text-lg">${userId}</span>
+          <button onclick="removeUser(${userId})" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl text-sm font-bold">
             REMOVE
           </button>
         `;
@@ -449,7 +446,7 @@
       });
     }
 
-    // ================== OPEN METHODS CHANNEL ==================
+    // ================== OPEN METHODS ==================
     function openMethods() {
       window.open('https://t.me/YOUR_CHANNEL_USERNAME', '_blank');
     }
@@ -481,29 +478,19 @@
       if (monitorInterval) clearInterval(monitorInterval);
 
       monitorInterval = setInterval(async () => {
-        try {
-          // Mock response for demo (since /check-username endpoint doesn't exist)
-          // In production, replace with actual API call
-          const mockData = { exists: true };
-          
-          const row = document.createElement('div');
-          row.className = 'flex justify-between py-3 border-b border-zinc-800';
-          
-          row.innerHTML = `
-            <span class="text-cyan-400">@${username}</span>
-            <span class="text-yellow-400">${new Date().toLocaleTimeString()}</span>
-            <span class="text-green-500 font-bold">ACTIVE</span>
-          `;
-          
-          log.appendChild(row);
-          log.scrollTop = log.scrollHeight;
-        } catch (e) {
-          console.log(e);
-        }
+        const row = document.createElement('div');
+        row.className = 'flex justify-between py-3 border-b border-zinc-800';
+        row.innerHTML = `
+          <span class="text-cyan-400">@${username}</span>
+          <span class="text-yellow-400">${new Date().toLocaleTimeString()}</span>
+          <span class="text-green-500 font-bold">ACTIVE</span>
+        `;
+        log.appendChild(row);
+        log.scrollTop = log.scrollHeight;
       }, 5000);
     }
 
-    // ================== BACK NAVIGATION ==================
+    // ================== NAVIGATION ==================
     function goBackToStart() {
       document.getElementById('report-flow').classList.add('hidden');
       document.getElementById('start-screen').classList.remove('hidden');
@@ -521,7 +508,6 @@
       document.getElementById('report-type-step').classList.remove('hidden');
     }
 
-    // ================== START REPORT ==================
     function startReport() {
       document.getElementById('start-screen').classList.add('hidden');
       document.getElementById('report-flow').classList.remove('hidden');
@@ -542,15 +528,14 @@
       const resDiv = document.getElementById('check-result');
       resDiv.innerHTML = `<p class="text-yellow-500">🔍 Checking @${username}...</p>`;
 
-      // Mock check - in production, replace with actual API
       setTimeout(() => {
-        if (username.length >= 3) {
-          resDiv.innerHTML = `✅ <b class="text-green-500">@${username}</b> <span class="text-green-400">exists! Proceeding...</span>`;
+        if (username.length >= 2) {
+          resDiv.innerHTML = `✅ <b class="text-green-500">@${username}</b> <span class="text-green-400">exists!</span>`;
           targetUsername = username;
           document.getElementById('username-step').classList.add('hidden');
           showReportTypes();
         } else {
-          resDiv.innerHTML = `❌ <b>@${username}</b> <span class="text-red-400">does NOT exist! Try another username.</span>`;
+          resDiv.innerHTML = `❌ <b>@${username}</b> <span class="text-red-400">does NOT exist!</span>`;
         }
       }, 800);
     }
@@ -620,9 +605,6 @@
 
     // ================== INITIALIZE ==================
     loadUsers();
-    
-    // Debug: Log current allowed users
-    console.log("Loaded allowed users:", [...allowedUsers]);
 
   </script>
 </body>
