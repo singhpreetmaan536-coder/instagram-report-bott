@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PAID ASSASSIN REPORT BOT — FIXED ACCESS</title>
+  <title>PAID ASSASSIN REPORT BOT</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
 
@@ -43,7 +43,7 @@
       <div id="user-info" class="hidden text-sm bg-zinc-900 px-4 py-2 rounded-xl"></div>
     </div>
 
-    <!-- Login Screen (fixed userID check) -->
+    <!-- Login Screen -->
     <div id="login-screen">
       <div class="glass rounded-3xl p-10 text-center border border-zinc-700 max-w-md mx-auto">
 
@@ -59,7 +59,6 @@
 
         <button
           onclick="verifyUser()"
-          id="verify-button"
           class="w-full bg-red-600 hover:bg-red-700 py-4 rounded-2xl font-bold text-lg transition"
         >
           VERIFY ACCESS
@@ -72,7 +71,7 @@
     <!-- Main App -->
     <div id="main-app" class="hidden">
 
-      <!-- Admin Panel (fixed: admin can add/remove users dynamically) -->
+      <!-- Admin Panel -->
       <div id="admin-panel" class="hidden mb-8">
         <div class="glass rounded-3xl p-6 border border-red-500/30">
 
@@ -142,7 +141,6 @@
           <img
             src="https://i.ibb.co/GfHVC0fY/photo-5472196357457123200-x.jpg"
             class="mx-auto rounded-2xl mb-10 w-72 shadow-2xl"
-            alt="report assassin"
           />
 
           <!-- BUTTONS -->
@@ -260,10 +258,9 @@
 
   <script>
 
-    // ================== ADMIN IDS (hardcoded + flexible) ==================
+    // ================== ADMIN IDS ==================
     const ADMIN_IDS = [7145835109, 7968968395];
 
-    // Allowed users set — includes admins by default to avoid confusion
     let allowedUsers = new Set();
     let currentUserId = null;
     let isAdmin = false;
@@ -290,20 +287,14 @@
       "Violent threat"
     ];
 
-    // ================== FIXED: LOAD USERS (admin panel users) ==================
+    // ================== LOAD USERS ==================
     function loadUsers() {
       const saved = localStorage.getItem('allowedUsers');
+
       if (saved) {
-        try {
-          const parsedUsers = JSON.parse(saved);
-          allowedUsers = new Set(parsedUsers.map(id => Number(id)));
-        } catch(e) { allowedUsers = new Set(); }
-      } else {
-        allowedUsers = new Set();
+        const parsedUsers = JSON.parse(saved);
+        allowedUsers = new Set(parsedUsers.map(id => Number(id)));
       }
-      
-      // IMPORTANT: Admins are not stored in allowedUsers by default but we handle access separately.
-      // However for UI consistency we don't override admin list.
     }
 
     // ================== SAVE USERS ==================
@@ -311,367 +302,395 @@
       localStorage.setItem('allowedUsers', JSON.stringify([...allowedUsers]));
     }
 
-    // ================== CHECK ACCESS LOGIC (CRITICAL FIX) ==================
-    // Fix 1: Only registered user IDs + admin IDs can login
-    // Previously ANY number worked — now ENFORCED list.
-    function hasValidAccess(userId) {
-      // If user is admin (hardcoded ADMIN_IDS) -> full access
-      if (ADMIN_IDS.includes(Number(userId))) return true;
-      // If user exists in the allowedUsers set (added by admin panel) -> access granted
-      if (allowedUsers.has(Number(userId))) return true;
+    // ================== FIXED DEVICE ID MANAGEMENT ==================
+    function getDeviceId() {
+      let deviceId = localStorage.getItem('deviceId');
+
+      if (!deviceId) {
+        deviceId = 'device-' + Math.random().toString(36).substring(2, 15) + Date.now();
+        localStorage.setItem('deviceId', deviceId);
+      }
+
+      return deviceId;
+    }
+
+    // ================== CHECK IF USER CAN LOGIN FROM THIS DEVICE ==================
+    function canLoginFromDevice(userId) {
+      const deviceId = getDeviceId();
+      const storageKey = `user_device_${userId}`;
+      const savedDevice = localStorage.getItem(storageKey);
+      
+      // If no device is registered for this user, they can login (first time)
+      if (!savedDevice) {
+        localStorage.setItem(storageKey, deviceId);
+        return true;
+      }
+      
+      // If device matches, allow login
+      if (savedDevice === deviceId) {
+        return true;
+      }
+      
+      // Different device detected - block login
       return false;
     }
 
-    // ================== VERIFY ACCESS (ENFORCED USER LIST) ==================
+    // ================== VERIFY ACCESS ==================
     function verifyUser() {
+
       const input = document.getElementById('telegram_id');
-      let rawId = input.value.trim();
+      const userId = Number(input.value.trim());
       const resultDiv = document.getElementById('login-result');
 
-      if (!rawId) {
+      if (!userId) {
         resultDiv.innerHTML = `<p class="text-red-500">❌ Please enter your Telegram User ID</p>`;
         return;
       }
-      
-      const userId = Number(rawId);
-      if (isNaN(userId)) {
-        resultDiv.innerHTML = `<p class="text-red-500">❌ Invalid ID format (must be numeric)</p>`;
-        return;
-      }
 
-      // FIX 1: Check against admin list OR admin-added users
-      const accessGranted = hasValidAccess(userId);
-
-      if (!accessGranted) {
-        resultDiv.innerHTML = `<p class="text-red-500">❌ Access Denied! Your ID (${userId}) is not authorized. Contact Admin @levitism</p>`;
-        return;
-      }
-
-      // DEVICE LOCK (single session)
-      const currentDevice = getDeviceId();
-      const savedDevice = localStorage.getItem(`user_${userId}`);
-      
-      if (savedDevice && savedDevice !== currentDevice) {
-        resultDiv.innerHTML = `<p class="text-red-500">❌ Access Denied! User already active on another device.</p>`;
-        return;
-      }
-      
-      if (!savedDevice) {
-        localStorage.setItem(`user_${userId}`, currentDevice);
-      }
-      
-      // Login successful
       currentUserId = userId;
       isAdmin = ADMIN_IDS.includes(userId);
-      
+
+      // Check if user has access (admin OR added by admin)
+      const hasAccess = isAdmin || [...allowedUsers].includes(userId);
+
+      if (!hasAccess) {
+        resultDiv.innerHTML = `<p class="text-red-500">❌ Access Denied! Contact Admin @levitism</p>`;
+        return;
+      }
+
+      // FIXED: Check device restriction
+      if (!canLoginFromDevice(userId)) {
+        resultDiv.innerHTML = `<p class="text-red-500">❌ Access Denied! This user ID is already active on another device.</p>`;
+        return;
+      }
+
       resultDiv.innerHTML = `<p class="text-green-500">✅ Access Granted! Redirecting...</p>`;
-      
+
       setTimeout(() => {
+
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
         document.getElementById('reporting-section').classList.remove('hidden');
-        
-        // show admin panel only if admin
+
         if (isAdmin) {
           document.getElementById('admin-panel').classList.remove('hidden');
           renderUsers();
-        } else {
-          document.getElementById('admin-panel').classList.add('hidden');
         }
-        
-        // Reset UI to start screen
-        document.getElementById('start-screen').classList.remove('hidden');
-        document.getElementById('report-flow').classList.add('hidden');
-        document.getElementById('monitor-box').classList.add('hidden');
-        if (interval) clearInterval(interval);
-        if (monitorInterval) clearInterval(monitorInterval);
-        
+
       }, 800);
     }
-    
-    // ================== ADD USER (admin only) ==================
+
+    // ================== ADD USER ==================
     function addUser() {
+
       const input = document.getElementById('new-user-id');
       const userId = parseInt(input.value.trim());
-      
-      if (!userId || isNaN(userId)) {
-        alert("Enter a valid numeric User ID");
-        return;
-      }
-      
-      if (ADMIN_IDS.includes(userId)) {
-        alert("Admin users are already authorized by system.");
-        return;
-      }
-      
+
+      if (!userId) return;
+
       allowedUsers.add(userId);
+
       saveUsers();
       renderUsers();
+
       input.value = '';
     }
-    
+
     // ================== REMOVE USER ==================
     function removeUser(userId) {
-      if (ADMIN_IDS.includes(userId)) {
-        alert("Cannot remove admin from user list (admin always has access).");
-        return;
-      }
+
       allowedUsers.delete(userId);
+      
+      // Also clear their device lock so they can login again from any device if re-added
+      localStorage.removeItem(`user_device_${userId}`);
+      
       saveUsers();
       renderUsers();
     }
-    
-    // ================== RENDER USERS (admin panel) ==================
+
+    // ================== RENDER USERS ==================
     function renderUsers() {
+
       const list = document.getElementById('users-list');
-      // Show only non-admin allowed users for clarity
-      const nonAdminUsers = [...allowedUsers].filter(uid => !ADMIN_IDS.includes(uid));
-      
-      if (nonAdminUsers.length === 0) {
-        list.innerHTML = `<p class="text-zinc-400">No additional users added. Admins always have access.</p>`;
+
+      if (allowedUsers.size === 0) {
+        list.innerHTML = `<p class="text-zinc-400">No users added</p>`;
         return;
       }
-      
+
       list.innerHTML = '';
-      nonAdminUsers.forEach(userId => {
+
+      [...allowedUsers].forEach(userId => {
+
         const div = document.createElement('div');
+
         div.className = 'flex justify-between items-center bg-zinc-900 px-4 py-3 rounded-2xl';
+
         div.innerHTML = `
           <span>${userId}</span>
-          <button onclick="removeUser(${userId})" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl">
+
+          <button
+            onclick="removeUser(${userId})"
+            class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl"
+          >
             REMOVE
           </button>
         `;
+
         list.appendChild(div);
       });
     }
-    
+
     // ================== OPEN METHODS CHANNEL ==================
     function openMethods() {
-      // Replace with real channel if needed, but keep placeholder
-      window.open('https://t.me/assassin_methods', '_blank');
+      window.open('https://t.me/YOUR_CHANNEL_USERNAME', '_blank');
     }
-    
+
     // ================== MONITOR SYSTEM ==================
     let monitorInterval = null;
-    
+
     function openMonitor() {
-      document.getElementById('monitor-box').classList.remove('hidden');
       document.getElementById('start-screen').classList.add('hidden');
-      document.getElementById('report-flow').classList.add('hidden');
+      document.getElementById('monitor-box').classList.remove('hidden');
     }
-    
+
     function closeMonitor() {
       if (monitorInterval) clearInterval(monitorInterval);
       document.getElementById('monitor-box').classList.add('hidden');
       document.getElementById('start-screen').classList.remove('hidden');
     }
-    
+
     async function startMonitoring() {
-      const username = document.getElementById('monitor-username').value.trim().replace('@', '').toLowerCase();
-      if (!username) {
-        alert("Enter a valid username to monitor");
-        return;
-      }
-      
+
+      const username = document.getElementById('monitor-username')
+        .value
+        .trim()
+        .replace('@', '')
+        .toLowerCase();
+
+      if (!username) return;
+
       const log = document.getElementById('monitor-log');
-      log.innerHTML = `<div class="text-blue-400 text-center py-4 font-bold">👀 Monitoring @${username}</div>`;
-      
+
+      log.innerHTML = `
+        <div class="text-blue-400 text-center py-4 font-bold">
+          👀 Monitoring @${username}
+        </div>
+      `;
+
       if (monitorInterval) clearInterval(monitorInterval);
-      
+
       monitorInterval = setInterval(async () => {
+
         try {
-          // Simulate realistic check without backend dependency (mock existence simulation)
-          // Using a fake check that always returns "exists" but adds random to demo
-          // Because original fetch '/check-username' would 404, we mock realistic logic:
-          const mockExists = true; // For demo purposes we assume username exists, user can use custom logic
-          // However I'm improving: generate random ban signal after some checks? but no.
-          // Let's make a realistic fake: always active with timestamp and optional ban simulation if username = "bannedtest"
-          let exists;
-          if (username === 'bannedtest') {
-            exists = false;
-          } else {
-            exists = true;
-          }
-          
-          const data = { exists: exists };
-          
+
+          const resp = await fetch('/check-username', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username })
+          });
+
+          const data = await resp.json();
+
           const row = document.createElement('div');
+
           row.className = 'flex justify-between py-3 border-b border-zinc-800';
-          
+
+          // USERNAME STILL EXISTS
           if (data.exists) {
+
             row.innerHTML = `
               <span class="text-cyan-400">@${username}</span>
               <span class="text-yellow-400">${new Date().toLocaleTimeString()}</span>
               <span class="text-green-500 font-bold">ACTIVE</span>
             `;
+
           } else {
+
             row.innerHTML = `
               <span class="text-cyan-400">@${username}</span>
               <span class="text-yellow-400">${new Date().toLocaleTimeString()}</span>
               <span class="text-red-500 font-bold">BANNED</span>
             `;
+
             clearInterval(monitorInterval);
+
             const alertBox = document.createElement('div');
+
             alertBox.className = 'text-red-500 text-center py-8 font-bold text-2xl';
+
             alertBox.innerHTML = `🚨 USERNAME BANNED: @${username}`;
+
             log.appendChild(alertBox);
           }
+
           log.appendChild(row);
           log.scrollTop = log.scrollHeight;
+
         } catch (e) {
-          console.log("monitor error", e);
+          console.log(e);
         }
+
       }, 5000);
     }
-    
+
     // ================== BACK NAVIGATION ==================
     function goBackToStart() {
       document.getElementById('report-flow').classList.add('hidden');
       document.getElementById('start-screen').classList.remove('hidden');
-      if (interval) clearInterval(interval);
     }
-    
+
     function goBackToUsername() {
       document.getElementById('report-type-step').classList.add('hidden');
       document.getElementById('username-step').classList.remove('hidden');
     }
-    
+
     function goBackToReportType() {
       stopReporting();
       document.getElementById('live-reporting').classList.add('hidden');
       document.getElementById('report-type-step').classList.remove('hidden');
     }
-    
-    // ================== START REPORT FLOW ==================
+
+    // ================== START REPORT ==================
     function startReport() {
+
       document.getElementById('start-screen').classList.add('hidden');
       document.getElementById('report-flow').classList.remove('hidden');
       document.getElementById('username-step').classList.remove('hidden');
-      document.getElementById('report-type-step').classList.add('hidden');
-      document.getElementById('live-reporting').classList.add('hidden');
-      if (interval) clearInterval(interval);
     }
-    
-    // ================== CHECK USERNAME (mock but functional) ==================
+
+    // ================== CHECK USERNAME ==================
     async function checkUsername() {
-      let username = document.getElementById('username').value.trim().replace('@', '').toLowerCase();
-      if (!username) {
-        document.getElementById('check-result').innerHTML = `<p class="text-red-500">Enter username</p>`;
-        return;
-      }
-      
+
+      let username = document.getElementById('username').value
+        .trim()
+        .replace('@', '')
+        .toLowerCase();
+
+      if (!username) return;
+
       const resDiv = document.getElementById('check-result');
-      resDiv.innerHTML = `<p class="text-yellow-500">🔍 Checking @${username} existence (simulated)...</p>`;
-      
-      // Since original endpoint doesn't exist, we simulate that most usernames exist except reserved
-      // But we make a smart simulation: any non-empty username is considered existing.
-      setTimeout(() => {
-        let exists = true;
-        if (username.length < 2) exists = false;
-        // special case for demo: if username includes 'fake' it fails
-        if (username === 'nonexistent') exists = false;
-        
-        if (exists) {
-          resDiv.innerHTML = `✅ <b>@${username}</b> exists! Proceeding to report types.`;
+
+      resDiv.innerHTML = `<p class="text-yellow-500">🔍 Checking @${username}...</p>`;
+
+      try {
+
+        const resp = await fetch('/check-username', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ username })
+        });
+
+        const data = await resp.json();
+
+        if (data.exists) {
+
+          resDiv.innerHTML = `✅ <b>@${username}</b> exists!`;
+
           targetUsername = username;
+
           document.getElementById('username-step').classList.add('hidden');
+
           showReportTypes();
+
         } else {
-          resDiv.innerHTML = `❌ @${username} does NOT exist. Try a valid username.`;
+
+          resDiv.innerHTML = `❌ @${username} does NOT exist!`;
         }
-      }, 600);
+
+      } catch (e) {
+
+        resDiv.innerHTML = `❌ Server Error`;
+      }
     }
-    
+
     // ================== SHOW REPORT TYPES ==================
     function showReportTypes() {
+
       const container = document.getElementById('report-buttons');
+
       container.innerHTML = '';
+
       reports.forEach((reason, i) => {
+
         const btn = document.createElement('button');
+
         btn.className = "bg-zinc-800 hover:bg-zinc-700 p-5 rounded-2xl text-left transition-all hover:border-red-500 border border-zinc-700";
-        btn.innerHTML = `<span class="text-red-500 mr-2">${i + 1}.</span> ${reason}`;
+
+        btn.innerHTML = `
+          <span class="text-red-500 mr-2">${i + 1}.</span>
+          ${reason}
+        `;
+
         btn.onclick = () => startMassReport(reason);
+
         container.appendChild(btn);
       });
+
       document.getElementById('report-type-step').classList.remove('hidden');
     }
-    
+
     // ================== START MASS REPORT ==================
     function startMassReport(reason) {
+
       reportName = reason;
+
       document.getElementById('report-type-step').classList.add('hidden');
       document.getElementById('live-reporting').classList.remove('hidden');
+
       document.getElementById('live-target').textContent = `@${targetUsername}`;
+
       count = 0;
+
       const table = document.getElementById('live-table');
-      table.innerHTML = `<p class="text-green-500 text-center py-8">✅ Reporting session loaded — sending reports every 0.65s</p>`;
-      
-      if (interval) clearInterval(interval);
+
+      table.innerHTML = `<p class="text-green-500 text-center py-8">✅ Session Loaded Successfully</p>`;
+
       interval = setInterval(() => {
+
         count++;
+
         const row = document.createElement('div');
+
         row.className = "flex justify-between py-3 border-b border-zinc-800 last:border-none";
+
         row.innerHTML = `
           <span class="text-cyan-400">#${count}</span>
           <span class="text-yellow-400">${new Date().toLocaleTimeString()}</span>
           <span class="text-green-500 font-bold">SENT</span>
           <span class="text-red-400">${reportName}</span>
         `;
+
         table.appendChild(row);
+
         table.scrollTop = table.scrollHeight;
+
       }, 650);
     }
-    
+
     // ================== STOP REPORTING ==================
     function stopReporting() {
-      if (interval) {
-        clearInterval(interval);
-        interval = null;
-      }
+
+      if (interval) clearInterval(interval);
+
       const table = document.getElementById('live-table');
-      if (table && !table.innerHTML.includes("REPORTING STOPPED")) {
-        table.innerHTML += `
-          <div class="text-red-500 text-center py-8 font-bold text-xl">
-            🛑 REPORTING STOPPED
-            <br>
-            Total: ${count}
-          </div>
-        `;
-      }
+
+      table.innerHTML += `
+        <div class="text-red-500 text-center py-8 font-bold text-xl">
+          🛑 REPORTING STOPPED
+          <br>
+          Total: ${count}
+        </div>
+      `;
     }
-    
-    // ================== SINGLE DEVICE LOGIN HELPER ==================
-    function getDeviceId() {
-      let deviceId = localStorage.getItem('deviceId');
-      if (!deviceId) {
-        deviceId = 'device-' + Math.random().toString(36).substring(2, 15) + Date.now();
-        localStorage.setItem('deviceId', deviceId);
-      }
-      return deviceId;
-    }
-    
-    // initialize allowed users from storage on page load
+
+    // ================== INITIALIZE ==================
     loadUsers();
-    
-    // Pre-load admin IDs into allowedUsers set for smoother display, but not mandatory.
-    // Also: ensure that any admin that logs in always passes hasValidAccess.
-    // fix any residual bug: make sure that default demo users are not allowed unless admin added.
-    // To avoid 'any user login' bug we also reset storage if empty — but only admin granted.
-    // The SYSTEM NOW ENFORCES: Either ADMIN ID or ID explicitly added by admin via panel.
-    
-    // Additional safeguard: remove any backdoor by checking environment
-    console.log("PAID ASSASSIN BOT — Fixed login enforcement & admin panel.");
-    
-    // ensure verify button is responsive (no duplicate events)
-    document.addEventListener('DOMContentLoaded', () => {
-      const btn = document.getElementById('verify-button');
-      if (btn) {
-        // just guarantee no double binding
-        btn.removeEventListener('click', window.verifyUserWrapper);
-      }
-    });
-  
+
   </script>
 </body>
 </html>
