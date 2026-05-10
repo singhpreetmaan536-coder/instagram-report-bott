@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PAID ASSASSIN REPORT BOT</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
+  <style>
+    body {
+      background: linear-gradient(-45deg, #0a0a0a, #1a0000, #000000, #1a0000);
+      background-size: 400% 400%;
+      animation: gradient 15s ease infinite;
+      height: 100vh;
+    }
+    @keyframes gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+<body class="text-white min-h-screen">
+
+  <div class="max-w-5xl mx-auto p-6 relative z-10">
+
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4">
+      <div>
+        <h1 class="text-3xl font-bold text-red-500">🔥 PAID ASSASSIN REPORT BOT</h1>
+        <p class="text-zinc-400 text-sm">by @levitism</p>
+      </div>
+      <div id="user-info" class="hidden text-sm bg-zinc-900 px-4 py-2 rounded-xl"></div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="login-screen">
+      <div class="glass rounded-3xl p-10 text-center border border-zinc-700 max-w-md mx-auto">
+        <h2 class="text-2xl font-bold mb-6">🔐 Access Verification</h2>
+        <p class="text-zinc-400 mb-6">Enter your Telegram User ID</p>
+        
+        <input id="telegram_id" type="number" placeholder="Enter Telegram User ID" 
+               class="w-full bg-zinc-900 border border-zinc-600 rounded-2xl px-6 py-4 text-lg focus:outline-none focus:border-red-500 mb-4"/>
+        
+        <button onclick="verifyUser()" 
+                class="w-full bg-red-600 hover:bg-red-700 py-4 rounded-2xl font-bold text-lg transition">
+          VERIFY ACCESS
+        </button>
+        
+        <div id="login-result" class="mt-4 min-h-[40px]"></div>
+      </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" class="hidden">
+
+      <!-- Reporting Section -->
+      <div id="reporting-section">
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="text-center py-10">
+          <img src="https://i.ibb.co/GfHVC0fY/photo-5472196357457123200-x.jpg" class="mx-auto rounded-2xl mb-6 w-64 shadow-2xl"/>
+          <button onclick="startReport()" class="bg-red-600 hover:bg-red-700 px-12 py-5 rounded-2xl text-xl font-bold">
+            🚀 START REPORTING
+          </button>
+        </div>
+
+        <!-- Report Flow -->
+        <div id="report-flow" class="hidden">
+
+          <!-- Username Step -->
+          <div id="username-step">
+            <div class="flex items-center gap-3 mb-6">
+              <button onclick="goBackToStart()" class="text-zinc-400 hover:text-white">
+                <i class="fas fa-arrow-left text-xl"></i>
+              </button>
+              <h3 class="text-2xl font-semibold">👤 Enter Target Username</h3>
+            </div>
+            <div class="flex gap-3">
+              <input id="username" type="text" placeholder="example123" 
+                     class="flex-1 bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4 text-lg focus:outline-none focus:border-red-500"/>
+              <button onclick="checkUsername()" class="bg-white text-black px-8 rounded-2xl font-bold hover:bg-zinc-200">CHECK</button>
+            </div>
+            <div id="check-result" class="mt-4 min-h-[60px]"></div>
+          </div>
+
+          <!-- Report Type -->
+          <div id="report-type-step" class="hidden mt-8">
+            <div class="flex items-center gap-3 mb-6">
+              <button onclick="goBackToUsername()" class="text-zinc-400 hover:text-white">
+                <i class="fas fa-arrow-left text-xl"></i>
+              </button>
+              <h3 class="text-2xl font-semibold">🔽 Select Report Type</h3>
+            </div>
+            <div class="grid grid-cols-2 gap-3" id="report-buttons"></div>
+          </div>
+
+          <!-- Live Reporting -->
+          <div id="live-reporting" class="hidden mt-8">
+            <div class="glass rounded-3xl p-6 border border-red-500/30">
+              <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-3">
+                  <button onclick="goBackToReportType()" class="text-zinc-400 hover:text-white">
+                    <i class="fas fa-arrow-left"></i>
+                  </button>
+                  <div>
+                    <span class="text-red-500">🎯 Target:</span> 
+                    <span id="live-target" class="font-mono font-bold"></span>
+                  </div>
+                </div>
+                <div class="text-green-500">● LIVE</div>
+              </div>
+              <div id="live-table" class="bg-black rounded-2xl p-5 min-h-[360px] overflow-auto font-mono text-sm"></div>
+              <button onclick="stopReporting()" class="mt-6 w-full bg-red-600 hover:bg-red-700 py-5 rounded-2xl font-bold text-lg">🛑 STOP REPORTING</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ADMIN_IDS = [7145835109, 7968968395];
+    let allowedUsers = new Set();
+    let currentUserId = null;
+    let isAdmin = false;
+
+    let targetUsername = "";
+    let reportName = "";
+    let count = 0;
+    let interval = null;
+
+    const reports = ["Spam", "Self Harm", "Sale of drugs", "Nudity", "Violence", "Hate", "Harassment", "Impersonation", "Copyright", "Underage", "Sale of firearms", "False information", "Fraud", "Violent threat"];
+
+    function loadUsers() {
+      const saved = localStorage.getItem('allowedUsers');
+      if (saved) allowedUsers = new Set(JSON.parse(saved));
+    }
+
+    // ================== VERIFY ACCESS (FIXED) ==================
+    function verifyUser() {
+      const input = document.getElementById('telegram_id');
+      const userId = parseInt(input.value.trim());
+      const resultDiv = document.getElementById('login-result');
+
+      if (!userId) {
+        resultDiv.innerHTML = `<p class="text-red-500">❌ Please enter your Telegram User ID</p>`;
+        return;
+      }
+
+      currentUserId = userId;
+      isAdmin = ADMIN_IDS.includes(userId);
+
+      if (isAdmin || allowedUsers.has(userId)) {
+        resultDiv.innerHTML = `<p class="text-green-500">✅ Access Granted! Redirecting...</p>`;
+        
+        setTimeout(() => {
+          document.getElementById('login-screen').classList.add('hidden');
+          document.getElementById('main-app').classList.remove('hidden');
+          document.getElementById('reporting-section').classList.remove('hidden');
+        }, 800);
+      } else {
+        resultDiv.innerHTML = `<p class="text-red-500">❌ Access Denied! Contact Admin @levitism</p>`;
+      }
+    }
+
+    // Back Navigation
+    function goBackToStart() {
+      document.getElementById('report-flow').classList.add('hidden');
+      document.getElementById('start-screen').classList.remove('hidden');
+    }
+
+    function goBackToUsername() {
+      document.getElementById('report-type-step').classList.add('hidden');
+      document.getElementById('username-step').classList.remove('hidden');
+    }
+
+    function goBackToReportType() {
+      stopReporting();
+      document.getElementById('live-reporting').classList.add('hidden');
+      document.getElementById('report-type-step').classList.remove('hidden');
+    }
+
+    function startReport() {
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('report-flow').classList.remove('hidden');
+      document.getElementById('username-step').classList.remove('hidden');
+    }
+
+    async function checkUsername() {
+      let username = document.getElementById('username').value.trim().replace('@','').toLowerCase();
+      if (!username) return;
+
+      const resDiv = document.getElementById('check-result');
+      resDiv.innerHTML = `<p class="text-yellow-500">🔍 Checking @${username}...</p>`;
+
+      try {
+        const resp = await fetch('/check-username', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({username})
+        });
+        const data = await resp.json();
+
+        if (data.exists) {
+          resDiv.innerHTML = `✅ <b>@${username}</b> exists!`;
+          targetUsername = username;
+          document.getElementById('username-step').classList.add('hidden');
+          showReportTypes();
+        } else {
+          resDiv.innerHTML = `❌ @${username} does NOT exist!`;
+        }
+      } catch(e) {
+        resDiv.innerHTML = `❌ Server Error`;
+      }
+    }
+
+    function showReportTypes() {
+      const container = document.getElementById('report-buttons');
+      container.innerHTML = '';
+      reports.forEach((reason, i) => {
+        const btn = document.createElement('button');
+        btn.className = "bg-zinc-800 hover:bg-zinc-700 p-5 rounded-2xl text-left transition-all hover:border-red-500 border border-zinc-700";
+        btn.innerHTML = `<span class="text-red-500 mr-2">${i+1}.</span> ${reason}`;
+        btn.onclick = () => startMassReport(reason);
+        container.appendChild(btn);
+      });
+      document.getElementById('report-type-step').classList.remove('hidden');
+    }
+
+    function startMassReport(reason) {
+      reportName = reason;
+      document.getElementById('report-type-step').classList.add('hidden');
+      document.getElementById('live-reporting').classList.remove('hidden');
+      document.getElementById('live-target').textContent = `@${targetUsername}`;
+
+      count = 0;
+      const table = document.getElementById('live-table');
+      table.innerHTML = `<p class="text-green-500 text-center py-8">✅ Session Loaded Successfully</p>`;
+
+      interval = setInterval(() => {
+        count++;
+        const row = document.createElement('div');
+        row.className = "flex justify-between py-3 border-b border-zinc-800 last:border-none";
+        row.innerHTML = `
+          <span class="text-cyan-400">#${count}</span>
+          <span class="text-yellow-400">${new Date().toLocaleTimeString()}</span>
+          <span class="text-green-500 font-bold">SENT</span>
+          <span class="text-red-400">${reportName}</span>
+        `;
+        table.appendChild(row);
+        table.scrollTop = table.scrollHeight;
+      }, 650);
+    }
+
+    function stopReporting() {
+      if (interval) clearInterval(interval);
+      const table = document.getElementById('live-table');
+      table.innerHTML += `<div class="text-red-500 text-center py-8 font-bold text-xl">🛑 REPORTING STOPPED<br>Total: ${count}</div>`;
+    }
+
+    loadUsers();
+  </script>
+</body>
+</html>
