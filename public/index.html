@@ -1,4 +1,4 @@
-
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -95,6 +95,51 @@
           </div>
 
           <div id="users-list" class="space-y-2"></div>
+        </div>
+      </div>
+
+      <!-- Monitor Section -->
+      <div class="text-center mb-8">
+        <button
+          onclick="openMonitor()"
+          class="bg-blue-600 hover:bg-blue-700 px-10 py-4 rounded-2xl text-lg font-bold"
+        >
+          👀 MONITOR USERNAME
+        </button>
+      </div>
+
+      <!-- Monitor Box -->
+      <div id="monitor-box" class="hidden mb-8">
+        <div class="glass rounded-3xl p-6 border border-blue-500/30">
+
+          <div class="flex items-center gap-3 mb-5">
+            <button onclick="closeMonitor()" class="text-zinc-400 hover:text-white">
+              <i class="fas fa-arrow-left"></i>
+            </button>
+
+            <h2 class="text-2xl font-bold text-blue-400">👀 USERNAME MONITOR</h2>
+          </div>
+
+          <div class="flex gap-3">
+            <input
+              id="monitor-username"
+              type="text"
+              placeholder="Enter Username"
+              class="flex-1 bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4 text-lg focus:outline-none focus:border-blue-500"
+            />
+
+            <button
+              onclick="startMonitoring()"
+              class="bg-blue-600 hover:bg-blue-700 px-8 rounded-2xl font-bold"
+            >
+              START
+            </button>
+          </div>
+
+          <div
+            id="monitor-log"
+            class="bg-black rounded-2xl p-5 min-h-[320px] overflow-auto font-mono text-sm mt-6"
+          ></div>
         </div>
       </div>
 
@@ -355,6 +400,94 @@
 
         list.appendChild(div);
       });
+    }
+
+    // ================== MONITOR SYSTEM ==================
+    let monitorInterval = null;
+
+    function openMonitor() {
+      document.getElementById('monitor-box').classList.remove('hidden');
+    }
+
+    function closeMonitor() {
+      if (monitorInterval) clearInterval(monitorInterval);
+      document.getElementById('monitor-box').classList.add('hidden');
+    }
+
+    async function startMonitoring() {
+
+      const username = document.getElementById('monitor-username')
+        .value
+        .trim()
+        .replace('@', '')
+        .toLowerCase();
+
+      if (!username) return;
+
+      const log = document.getElementById('monitor-log');
+
+      log.innerHTML = `
+        <div class="text-blue-400 text-center py-4 font-bold">
+          👀 Monitoring @${username}
+        </div>
+      `;
+
+      if (monitorInterval) clearInterval(monitorInterval);
+
+      monitorInterval = setInterval(async () => {
+
+        try {
+
+          const resp = await fetch('/check-username', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username })
+          });
+
+          const data = await resp.json();
+
+          const row = document.createElement('div');
+
+          row.className = 'flex justify-between py-3 border-b border-zinc-800';
+
+          // USERNAME STILL EXISTS
+          if (data.exists) {
+
+            row.innerHTML = `
+              <span class="text-cyan-400">@${username}</span>
+              <span class="text-yellow-400">${new Date().toLocaleTimeString()}</span>
+              <span class="text-green-500 font-bold">ACTIVE</span>
+            `;
+
+          } else {
+
+            row.innerHTML = `
+              <span class="text-cyan-400">@${username}</span>
+              <span class="text-yellow-400">${new Date().toLocaleTimeString()}</span>
+              <span class="text-red-500 font-bold">BANNED</span>
+            `;
+
+            clearInterval(monitorInterval);
+
+            const alertBox = document.createElement('div');
+
+            alertBox.className = 'text-red-500 text-center py-8 font-bold text-2xl';
+
+            alertBox.innerHTML = `🚨 USERNAME BANNED: @${username}`;
+
+            log.appendChild(alertBox);
+          }
+
+          log.appendChild(row);
+          log.scrollTop = log.scrollHeight;
+
+        } catch (e) {
+          console.log(e);
+        }
+
+      }, 5000);
     }
 
     // ================== BACK NAVIGATION ==================
