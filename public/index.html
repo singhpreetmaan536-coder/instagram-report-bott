@@ -1,4 +1,4 @@
-```html
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -293,9 +293,9 @@
       const saved = localStorage.getItem('allowedUsers');
 
       if (saved) {
-        allowedUsers = new Set(JSON.parse(saved).map(id => Number(id)));
+        const parsedUsers = JSON.parse(saved);
+        allowedUsers = new Set(parsedUsers.map(id => Number(id)));
       }
-    }
     }
 
     // ================== SAVE USERS ==================
@@ -676,3 +676,4 @@
   </script>
 </body>
 </html>
+
