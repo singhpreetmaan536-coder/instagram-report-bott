@@ -1,4 +1,4 @@
-```html
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -98,16 +98,6 @@
         </div>
       </div>
 
-      <!-- Monitor Section -->
-      <div class="text-center mb-8">
-        <button
-          onclick="openMonitor()"
-          class="bg-blue-600 hover:bg-blue-700 px-10 py-4 rounded-2xl text-lg font-bold"
-        >
-          👀 MONITOR USERNAME
-        </button>
-      </div>
-
       <!-- Monitor Box -->
       <div id="monitor-box" class="hidden mb-8">
         <div class="glass rounded-3xl p-6 border border-blue-500/30">
@@ -148,17 +138,37 @@
 
         <!-- Start Screen -->
         <div id="start-screen" class="text-center py-10">
+
           <img
             src="https://i.ibb.co/GfHVC0fY/photo-5472196357457123200-x.jpg"
-            class="mx-auto rounded-2xl mb-6 w-64 shadow-2xl"
+            class="mx-auto rounded-2xl mb-10 w-72 shadow-2xl"
           />
 
-          <button
-            onclick="startReport()"
-            class="bg-red-600 hover:bg-red-700 px-12 py-5 rounded-2xl text-xl font-bold"
-          >
-            🚀 START REPORTING
-          </button>
+          <!-- BUTTONS -->
+          <div class="flex flex-wrap justify-center gap-4">
+
+            <button
+              onclick="startReport()"
+              class="bg-red-600 hover:bg-red-700 px-10 py-5 rounded-2xl text-lg font-bold"
+            >
+              🚀 START REPORTING
+            </button>
+
+            <button
+              onclick="openMonitor()"
+              class="bg-blue-600 hover:bg-blue-700 px-10 py-5 rounded-2xl text-lg font-bold"
+            >
+              👀 MONITOR USERNAME
+            </button>
+
+            <button
+              onclick="openMethods()"
+              class="bg-green-600 hover:bg-green-700 px-10 py-5 rounded-2xl text-lg font-bold"
+            >
+              📚 BANNING METHODS
+            </button>
+
+          </div>
         </div>
 
         <!-- Report Flow -->
@@ -402,6 +412,11 @@
       });
     }
 
+    // ================== OPEN METHODS CHANNEL ==================
+    function openMethods() {
+      window.open('https://t.me/YOUR_CHANNEL_USERNAME', '_blank');
+    }
+
     // ================== MONITOR SYSTEM ==================
     let monitorInterval = null;
 
@@ -623,7 +638,7 @@
 
         table.scrollTop = table.scrollHeight;
 
-      }, 650);
+      }, 1500);
     }
 
     // ================== STOP REPORTING ==================
