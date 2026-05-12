@@ -39,63 +39,10 @@
         <h1 class="text-3xl font-bold text-red-500">🔥 PAID ASSASSIN REPORT BOT</h1>
         <p class="text-zinc-400 text-sm">by @levitism</p>
       </div>
-
-      <div id="user-info" class="hidden text-sm bg-zinc-900 px-4 py-2 rounded-xl"></div>
     </div>
 
-    <!-- Login Screen -->
-    <div id="login-screen">
-      <div class="glass rounded-3xl p-10 text-center border border-zinc-700 max-w-md mx-auto">
-
-        <h2 class="text-2xl font-bold mb-6">🔐 Access Verification</h2>
-        <p class="text-zinc-400 mb-6">Enter your Telegram User ID</p>
-
-        <input
-          id="telegram_id"
-          type="number"
-          placeholder="Enter Telegram User ID"
-          class="w-full bg-zinc-900 border border-zinc-600 rounded-2xl px-6 py-4 text-lg focus:outline-none focus:border-red-500 mb-4"
-        />
-
-        <button
-          onclick="verifyUser()"
-          class="w-full bg-red-600 hover:bg-red-700 py-4 rounded-2xl font-bold text-lg transition"
-        >
-          VERIFY ACCESS
-        </button>
-
-        <div id="login-result" class="mt-4 min-h-[40px]"></div>
-      </div>
-    </div>
-
-    <!-- Main App -->
-    <div id="main-app" class="hidden">
-
-      <!-- Admin Panel -->
-      <div id="admin-panel" class="hidden mb-8">
-        <div class="glass rounded-3xl p-6 border border-red-500/30">
-
-          <h2 class="text-2xl font-bold text-red-500 mb-4">⚙️ ADMIN PANEL</h2>
-
-          <div class="flex gap-3 mb-4">
-            <input
-              id="new-user-id"
-              type="number"
-              placeholder="Enter User ID"
-              class="flex-1 bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-red-500"
-            />
-
-            <button
-              onclick="addUser()"
-              class="bg-green-600 hover:bg-green-700 px-6 rounded-2xl font-bold"
-            >
-              ADD USER
-            </button>
-          </div>
-
-          <div id="users-list" class="space-y-2"></div>
-        </div>
-      </div>
+    <!-- Main App - Directly visible, no login -->
+    <div id="main-app">
 
       <!-- Monitor Box -->
       <div id="monitor-box" class="hidden mb-8">
@@ -257,14 +204,6 @@
 
   <script>
 
-    // ================== ADMIN IDS ==================
-    const ADMIN_IDS = [7145835109, 7968968395];
-
-    // Allowed users list
-    let allowedUsers = [];
-    let currentUserId = null;
-    let isAdmin = false;
-
     let targetUsername = "";
     let reportName = "";
     let count = 0;
@@ -275,143 +214,6 @@
       "Hate", "Harassment", "Impersonation", "Copyright", "Underage",
       "Sale of firearms", "False information", "Fraud", "Violent threat"
     ];
-
-    // ================== LOAD USERS ==================
-    function loadUsers() {
-      const saved = localStorage.getItem('allowedUsers');
-      if (saved) {
-        try {
-          allowedUsers = JSON.parse(saved);
-          allowedUsers = allowedUsers.map(id => Number(id));
-        } catch(e) {
-          allowedUsers = [];
-        }
-      } else {
-        allowedUsers = [];
-      }
-      console.log("Loaded users:", allowedUsers);
-    }
-
-    // ================== SAVE USERS ==================
-    function saveUsers() {
-      localStorage.setItem('allowedUsers', JSON.stringify(allowedUsers));
-      console.log("Saved users:", allowedUsers);
-    }
-
-    // ================== VERIFY ACCESS - NO DEVICE LOCK ==================
-    function verifyUser() {
-      const input = document.getElementById('telegram_id');
-      const userId = Number(input.value.trim());
-      const resultDiv = document.getElementById('login-result');
-
-      if (!userId || isNaN(userId)) {
-        resultDiv.innerHTML = `<p class="text-red-500">❌ Please enter a valid Telegram User ID</p>`;
-        return;
-      }
-
-      currentUserId = userId;
-      isAdmin = ADMIN_IDS.includes(userId);
-      
-      // ACCESS CHECK - sirf ye check karega ki user allowed hai ya nahi
-      let hasAccess = false;
-      
-      if (isAdmin) {
-        hasAccess = true;
-        console.log("Admin access granted for:", userId);
-      } else {
-        // Check if userId exists in allowedUsers array
-        for (let i = 0; i < allowedUsers.length; i++) {
-          if (allowedUsers[i] === userId) {
-            hasAccess = true;
-            console.log("User found in allowed list:", userId);
-            break;
-          }
-        }
-      }
-
-      if (!hasAccess) {
-        resultDiv.innerHTML = `<p class="text-red-500">❌ Access Denied! User ID ${userId} is not authorized. Contact Admin @levitism</p>`;
-        console.log("Access denied for:", userId, "Allowed users:", allowedUsers);
-        return;
-      }
-
-      // NO DEVICE CHECK - ab koi bhi device se login ho sakta hai
-      resultDiv.innerHTML = `<p class="text-green-500">✅ Access Granted! Redirecting...</p>`;
-
-      setTimeout(() => {
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('main-app').classList.remove('hidden');
-        document.getElementById('reporting-section').classList.remove('hidden');
-        document.getElementById('start-screen').classList.remove('hidden');
-
-        if (isAdmin) {
-          document.getElementById('admin-panel').classList.remove('hidden');
-          renderUsers();
-        }
-      }, 800);
-    }
-
-    // ================== ADD USER ==================
-    function addUser() {
-      const input = document.getElementById('new-user-id');
-      const userId = parseInt(input.value.trim());
-      
-      if (!userId || isNaN(userId)) {
-        alert("Please enter a valid numeric User ID");
-        return;
-      }
-      
-      if (ADMIN_IDS.includes(userId)) {
-        alert("Admin users already have access by default");
-        return;
-      }
-      
-      if (allowedUsers.includes(userId)) {
-        alert(`User ${userId} already has access!`);
-        return;
-      }
-      
-      allowedUsers.push(userId);
-      saveUsers();
-      renderUsers();
-      input.value = '';
-      
-      alert(`✅ User ${userId} added successfully! They can now login from any device.`);
-    }
-
-    // ================== REMOVE USER ==================
-    function removeUser(userId) {
-      const index = allowedUsers.indexOf(userId);
-      if (index !== -1) {
-        allowedUsers.splice(index, 1);
-        saveUsers();
-        renderUsers();
-        alert(`User ${userId} removed successfully`);
-      }
-    }
-
-    // ================== RENDER USERS ==================
-    function renderUsers() {
-      const list = document.getElementById('users-list');
-      
-      if (allowedUsers.length === 0) {
-        list.innerHTML = `<p class="text-zinc-400">No authorized users added. Add users below.</p>`;
-        return;
-      }
-
-      list.innerHTML = '';
-      allowedUsers.forEach(userId => {
-        const div = document.createElement('div');
-        div.className = 'flex justify-between items-center bg-zinc-900 px-4 py-3 rounded-2xl';
-        div.innerHTML = `
-          <span class="font-mono text-lg">${userId}</span>
-          <button onclick="removeUser(${userId})" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl text-sm font-bold">
-            REMOVE
-          </button>
-        `;
-        list.appendChild(div);
-      });
-    }
 
     // ================== OPEN METHODS ==================
     function openMethods() {
@@ -569,9 +371,6 @@
         `;
       }
     }
-
-    // ================== INITIALIZE ==================
-    loadUsers();
 
   </script>
 </body>
