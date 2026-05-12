@@ -3,17 +3,40 @@ const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+const USERS_FILE = path.join(__dirname, 'users.json');
+
+// Load users
+let allowedUsers = ["7968968395"]; // default admin
+if (fs.existsSync(USERS_FILE)) {
+    try {
+        const data = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+        allowedUsers = data.allowedUsers || allowedUsers;
+    } catch (e) {}
+}
+
+// Save users
+function saveUsers() {
+    fs.writeFileSync(USERS_FILE, JSON.stringify({ allowedUsers }, null, 2));
+}
+
+// Routes
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ================== EXACT CHECK FROM YOUR PYTHON FILE ==================
+// Get allowed users (for admin)
+app.get('/api/users', (req, res) => {
+    res.json({ allowedUsers });
+});
+
+// Check username
 app.post('/check-username', async (req, res) => {
     let { username } = req.body;
     if (!username) return res.json({ exists: false });
@@ -51,34 +74,64 @@ app.post('/check-username', async (req, res) => {
         const text = response.data.toString().toLowerCase();
 
         if (text.includes(`"${username}"`) && !text.includes('"not_found"') && !text.includes('no_results')) {
-            console.log(`✅ ${username} → EXISTS`);
             return res.json({ exists: true, username });
-        } else {
-            console.log(`❌ ${username} → Does NOT Exist`);
-            return res.json({ exists: false });
         }
-
     } catch (error) {
         console.log("Error in check:", error.message);
-        
-        // Fallback
-        try {
-            const { data } = await axios.get(`https://www.instagram.com/${username}/`, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-                timeout: 10000
-            });
-            if (data.includes(`"username":"${username}"`)) {
-                console.log(`✅ ${username} → EXISTS (Fallback)`);
-                return res.json({ exists: true, username });
-            }
-        } catch (e) {}
     }
 
-    console.log(`❌ ${username} → Does NOT Exist`);
+    // Fallback
+    try {
+        const { data } = await axios.get(`https://www.instagram.com/${username}/`, {
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+            timeout: 10000
+        });
+        if (data.includes(`"username":"${username}"`)) {
+            return res.json({ exists: true, username });
+        }
+    } catch (e) {}
+
     res.json({ exists: false });
+});
+
+// New API for auth
+app.post('/api/login', (req, res) => {
+    const { userId } = req.body;
+    if (allowedUsers.includes(userId.toUpperCase())) {
+        res.json({ success: true });
+    } else {
+        res.json({ success: false });
+    }
+});
+
+app.get('/api/allowed-users', (req, res) => {
+    res.json({ allowedUsers });
+});
+
+app.post('/api/add-user', (req, res) => {
+    const { userId, adminId } = req.body;
+    if (adminId !== "7968968395") return res.json({ success: false });
+
+    const upperId = userId.toUpperCase().trim();
+    if (!allowedUsers.includes(upperId)) {
+        allowedUsers.push(upperId);
+        saveUsers();
+    }
+    res.json({ success: true, allowedUsers });
+});
+
+app.post('/api/remove-user', (req, res) => {
+    const { userId, adminId } = req.body;
+    if (adminId !== "7968968395") return res.json({ success: false });
+    if (userId === "7968968395") return res.json({ success: false });
+
+    allowedUsers = allowedUsers.filter(id => id !== userId);
+    saveUsers();
+    res.json({ success: true, allowedUsers });
 });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`✅ Allowed Users: ${allowedUsers.length}`);
 });
