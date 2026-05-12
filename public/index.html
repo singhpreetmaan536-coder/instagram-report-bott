@@ -27,7 +27,7 @@
 </head>
 <body class="text-white min-h-screen">
 
-  <div class="max-w-5xl mx-auto p-6 relative z-10">
+  <div class="max-w-5xl mx-auto p-6">
 
     <!-- Header -->
     <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4">
@@ -35,7 +35,6 @@
         <h1 class="text-3xl font-bold text-red-500">🔥 PAID ASSASSIN REPORT BOT</h1>
         <p class="text-zinc-400 text-sm">by @levitism</p>
       </div>
-      <div id="user-info" class="hidden text-sm bg-zinc-900 px-4 py-2 rounded-xl"></div>
     </div>
 
     <!-- Login Screen -->
@@ -52,7 +51,7 @@
           VERIFY ACCESS
         </button>
         
-        <div id="login-result" class="mt-4 min-h-[40px]"></div>
+        <div id="login-result" class="mt-4 min-h-[50px]"></div>
       </div>
     </div>
 
@@ -74,19 +73,18 @@
 
       <!-- Reporting Section -->
       <div id="reporting-section">
-
-        <!-- Start Screen -->
         <div id="start-screen" class="text-center py-10">
-          <img src="https://i.ibb.co/GfHVC0fY/photo-5472196357457123200-x.jpg" class="mx-auto rounded-2xl mb-10 w-72 shadow-2xl"/>
-          <div class="flex flex-wrap justify-center gap-4">
-            <button onclick="startReport()" class="bg-red-600 hover:bg-red-700 px-10 py-5 rounded-2xl text-lg font-bold">
-              🚀 START REPORTING
-            </button>
-          </div>
+          <img src="https://i.ibb.co/GfHVC0fY/photo-5472196357457123200-x.jpg" 
+               class="mx-auto rounded-2xl mb-10 w-72 shadow-2xl"/>
+          <button onclick="startReport()" 
+                  class="bg-red-600 hover:bg-red-700 px-12 py-5 rounded-2xl text-xl font-bold">
+            🚀 START REPORTING
+          </button>
         </div>
 
         <!-- Report Flow -->
         <div id="report-flow" class="hidden">
+
           <!-- Username Step -->
           <div id="username-step">
             <div class="flex items-center gap-3 mb-6">
@@ -98,12 +96,13 @@
             <div class="flex gap-3">
               <input id="username" type="text" placeholder="example123" 
                      class="flex-1 bg-zinc-900 border border-zinc-700 rounded-2xl px-6 py-4 text-lg focus:outline-none focus:border-red-500"/>
-              <button onclick="checkUsername()" class="bg-white text-black px-8 rounded-2xl font-bold hover:bg-zinc-200">CHECK</button>
+              <button onclick="checkUsername()" 
+                      class="bg-white text-black px-8 rounded-2xl font-bold hover:bg-zinc-200">CHECK</button>
             </div>
             <div id="check-result" class="mt-4 min-h-[60px]"></div>
           </div>
 
-          <!-- Report Type -->
+          <!-- Report Type Step -->
           <div id="report-type-step" class="hidden mt-8">
             <div class="flex items-center gap-3 mb-6">
               <button onclick="goBackToUsername()" class="text-zinc-400 hover:text-white">
@@ -130,7 +129,10 @@
                 <div class="text-green-500">● LIVE</div>
               </div>
               <div id="live-table" class="bg-black rounded-2xl p-5 min-h-[360px] overflow-auto font-mono text-sm"></div>
-              <button onclick="stopReporting()" class="mt-6 w-full bg-red-600 hover:bg-red-700 py-5 rounded-2xl font-bold text-lg">🛑 STOP REPORTING</button>
+              <button onclick="stopReporting()" 
+                      class="mt-6 w-full bg-red-600 hover:bg-red-700 py-5 rounded-2xl font-bold text-lg">
+                🛑 STOP REPORTING
+              </button>
             </div>
           </div>
         </div>
@@ -141,15 +143,6 @@
   <script>
     const ADMIN_IDS = [7145835109, 7968968395];
     let allowedUsers = [];
-    let currentUserId = null;
-    let isAdmin = false;
-
-    let targetUsername = "";
-    let reportName = "";
-    let count = 0;
-    let interval = null;
-
-    const reports = ["Spam", "Self Harm", "Sale of drugs", "Nudity", "Violence", "Hate", "Harassment", "Impersonation", "Copyright", "Underage", "Sale of firearms", "False information", "Fraud", "Violent threat"];
 
     function loadUsers() {
       const saved = localStorage.getItem('allowedUsers');
@@ -162,7 +155,6 @@
       localStorage.setItem('allowedUsers', JSON.stringify(allowedUsers));
     }
 
-    // ================== VERIFY USER (Fixed - Multi Device) ==================
     function verifyUser() {
       const input = document.getElementById('telegram_id');
       const userId = Number(input.value.trim());
@@ -173,74 +165,66 @@
         return;
       }
 
-      currentUserId = userId;
-      isAdmin = ADMIN_IDS.includes(userId);
+      const isAdmin = ADMIN_IDS.includes(userId);
+      const isAllowed = allowedUsers.includes(userId);
 
-      const hasAccess = isAdmin || allowedUsers.includes(userId);
-
-      if (!hasAccess) {
-        resultDiv.innerHTML = `<p class="text-red-500">❌ Access Denied! Contact Admin @levitism</p>`;
-        return;
+      if (isAdmin || isAllowed) {
+        resultDiv.innerHTML = `<p class="text-green-500">✅ Access Granted! Redirecting...</p>`;
+        
+        setTimeout(() => {
+          document.getElementById('login-screen').classList.add('hidden');
+          document.getElementById('main-app').classList.remove('hidden');
+          
+          if (isAdmin) {
+            document.getElementById('admin-panel').classList.remove('hidden');
+            renderUsers();
+          }
+        }, 800);
+      } else {
+        resultDiv.innerHTML = `<p class="text-red-500">❌ Access Denied!<br>Contact Admin @levitism</p>`;
       }
-
-      resultDiv.innerHTML = `<p class="text-green-500">✅ Access Granted! Redirecting...</p>`;
-
-      setTimeout(() => {
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('main-app').classList.remove('hidden');
-        document.getElementById('reporting-section').classList.remove('hidden');
-
-        if (isAdmin) {
-          document.getElementById('admin-panel').classList.remove('hidden');
-          renderUsers();
-        }
-      }, 800);
     }
 
     function addUser() {
-      const input = document.getElementById('new-user-id');
-      const userId = Number(input.value.trim());
+      const id = Number(document.getElementById('new-user-id').value.trim());
+      if (!id) return alert("Enter valid User ID");
 
-      if (!userId) return alert("Enter valid User ID");
+      if (allowedUsers.includes(id)) return alert("User already added!");
 
-      if (ADMIN_IDS.includes(userId)) return alert("Admin already has access");
-
-      if (allowedUsers.includes(userId)) return alert("User already added");
-
-      allowedUsers.push(userId);
+      allowedUsers.push(id);
       saveUsers();
       renderUsers();
-      input.value = '';
-      alert(`✅ User ${userId} added successfully! They can now login from ANY device.`);
+      document.getElementById('new-user-id').value = '';
+      alert(`✅ User ${id} added successfully!`);
     }
 
-    function removeUser(userId) {
-      allowedUsers = allowedUsers.filter(id => id !== userId);
+    function removeUser(id) {
+      allowedUsers = allowedUsers.filter(x => x !== id);
       saveUsers();
       renderUsers();
     }
 
     function renderUsers() {
-      const list = document.getElementById('users-list');
-      list.innerHTML = '';
+      const container = document.getElementById('users-list');
+      container.innerHTML = '';
 
       if (allowedUsers.length === 0) {
-        list.innerHTML = `<p class="text-zinc-400 text-center py-4">No users added yet</p>`;
+        container.innerHTML = `<p class="text-zinc-400 text-center py-4">No users added yet</p>`;
         return;
       }
 
       allowedUsers.forEach(id => {
         const div = document.createElement('div');
-        div.className = "flex justify-between items-center bg-zinc-900 px-5 py-3 rounded-2xl";
-        div.innerHTML = `
-          <span class="font-mono">${id}</span>
-          <button onclick="removeUser(${id})" class="bg-red-600 hover:bg-red-700 px-5 py-1.5 rounded-xl text-sm">Remove</button>
-        `;
-        list.appendChild(div);
+        div.className = "flex justify-between items-center bg-zinc-900 p-4 rounded-2xl";
+        div.innerHTML = `<span>${id}</span> <button onclick="removeUser(${id})" class="bg-red-600 hover:bg-red-700 px-4 py-1 rounded-xl text-sm">Remove</button>`;
+        container.appendChild(div);
       });
     }
 
-    // ================== Reporting Functions (Rest same) ==================
+    // Reporting Functions
+    let targetUsername = "";
+    let interval = null;
+
     function startReport() {
       document.getElementById('start-screen').classList.add('hidden');
       document.getElementById('report-flow').classList.remove('hidden');
@@ -255,12 +239,12 @@
       resDiv.innerHTML = `<p class="text-yellow-500">🔍 Checking @${username}...</p>`;
 
       try {
-        const resp = await fetch('/check-username', {
+        const res = await fetch('/check-username', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({username})
         });
-        const data = await resp.json();
+        const data = await res.json();
 
         if (data.exists) {
           resDiv.innerHTML = `✅ <b>@${username}</b> exists!`;
@@ -278,6 +262,8 @@
     function showReportTypes() {
       const container = document.getElementById('report-buttons');
       container.innerHTML = '';
+      const reports = ["Spam", "Self Harm", "Sale of drugs", "Nudity", "Violence", "Hate", "Harassment", "Impersonation", "Copyright", "Underage", "Sale of firearms", "False information", "Fraud", "Violent threat"];
+      
       reports.forEach((reason, i) => {
         const btn = document.createElement('button');
         btn.className = "bg-zinc-800 hover:bg-zinc-700 p-5 rounded-2xl text-left transition-all hover:border-red-500 border border-zinc-700";
@@ -289,7 +275,6 @@
     }
 
     function startMassReport(reason) {
-      reportName = reason;
       document.getElementById('report-type-step').classList.add('hidden');
       document.getElementById('live-reporting').classList.remove('hidden');
       document.getElementById('live-target').textContent = `@${targetUsername}`;
@@ -302,7 +287,7 @@
         count++;
         const row = document.createElement('div');
         row.className = "flex justify-between py-3 border-b border-zinc-800 last:border-none";
-        row.innerHTML = `<span class="text-cyan-400">#${count}</span><span class="text-yellow-400">${new Date().toLocaleTimeString()}</span><span class="text-green-500 font-bold">SENT</span><span class="text-red-400">${reportName}</span>`;
+        row.innerHTML = `<span class="text-cyan-400">#${count}</span><span class="text-yellow-400">${new Date().toLocaleTimeString()}</span><span class="text-green-500 font-bold">SENT</span><span class="text-red-400">${reason}</span>`;
         table.appendChild(row);
         table.scrollTop = table.scrollHeight;
       }, 650);
@@ -310,14 +295,25 @@
 
     function stopReporting() {
       if (interval) clearInterval(interval);
-      const table = document.getElementById('live-table');
-      table.innerHTML += `<div class="text-red-500 text-center py-8 font-bold text-xl">🛑 STOPPED<br>Total: ${count}</div>`;
     }
 
-    function goBackToStart() { /* ... */ }
-    function goBackToUsername() { /* ... */ }
-    function goBackToReportType() { /* ... */ }
+    function goBackToStart() {
+      document.getElementById('report-flow').classList.add('hidden');
+      document.getElementById('start-screen').classList.remove('hidden');
+    }
 
+    function goBackToUsername() {
+      document.getElementById('report-type-step').classList.add('hidden');
+      document.getElementById('username-step').classList.remove('hidden');
+    }
+
+    function goBackToReportType() {
+      stopReporting();
+      document.getElementById('live-reporting').classList.add('hidden');
+      document.getElementById('report-type-step').classList.remove('hidden');
+    }
+
+    // Initialize
     loadUsers();
   </script>
 </body>
