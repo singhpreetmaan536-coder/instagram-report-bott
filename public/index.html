@@ -78,7 +78,7 @@
       <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4">
         <div>
           <h1 class="text-3xl font-bold text-red-500">🔥 PAID ASSASSIN REPORT BOT</h1>
-          <p class="text-zinc-400 text-sm">by @levitism • </p>
+          <p class="text-zinc-400 text-sm">by @levitism</p>
         </div>
         
         <div class="flex items-center gap-4">
@@ -256,11 +256,7 @@
 
   <script>
     // ====================== CONFIG ======================
-    const ADMIN_ID = "7968968395"; // ← CHANGE THIS TO YOUR SECRET ADMIN ID
-
-    let allowedUsers = JSON.parse(localStorage.getItem('assassin_allowed_users')) || [
-      ADMIN_ID,
-    ];
+    const ADMIN_ID = "7968968395";
 
     let currentUserId = null;
     let targetUsername = "";
@@ -272,11 +268,18 @@
     const reports = ["Spam", "Self Harm", "Sale of drugs", "Nudity", "Violence", "Hate", "Harassment", "Impersonation", "Copyright", "Underage", "Sale of firearms", "False information", "Fraud", "Violent threat"];
 
     // ====================== AUTH ======================
-    function login() {
+    async function login() {
       let inputId = document.getElementById('user-id-input').value.trim().toUpperCase();
       if (!inputId) return alert("Please enter User ID");
 
-      if (!allowedUsers.includes(inputId)) {
+      const resp = await fetch('/api/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ userId: inputId })
+      });
+      const data = await resp.json();
+
+      if (!data.success) {
         return alert("❌ Invalid or Expired User ID!\nContact @levitism");
       }
 
@@ -300,63 +303,81 @@
     }
 
     // ====================== ADMIN PANEL ======================
-    function showAdminPanel() {
+    async function showAdminPanel() {
       if (currentUserId !== ADMIN_ID) return;
       document.getElementById('admin-panel').classList.remove('hidden');
-      renderUserList();
+      await renderUserList();
     }
 
     function hideAdminPanel() {
       document.getElementById('admin-panel').classList.add('hidden');
     }
 
-    function addNewUser() {
+    async function renderUserList() {
+      try {
+        const resp = await fetch('/api/allowed-users');
+        const data = await resp.json();
+        
+        const container = document.getElementById('user-list');
+        container.innerHTML = '';
+        document.getElementById('user-count').textContent = `${data.allowedUsers.length} total`;
+
+        data.allowedUsers.forEach(id => {
+          const div = document.createElement('div');
+          div.className = "flex justify-between items-center bg-zinc-900 p-3 rounded-xl";
+          div.innerHTML = `
+            <span class="font-mono ${id === ADMIN_ID ? 'text-red-400' : 'text-white'}">${id}</span>
+            <div class="flex items-center gap-3">
+              <span class="text-xs px-3 py-1 rounded-full ${id === ADMIN_ID ? 'bg-red-500/20 text-red-400' : 'bg-zinc-700 text-zinc-400'}">
+                ${id === ADMIN_ID ? 'ADMIN' : 'USER'}
+              </span>
+              ${id !== ADMIN_ID ? `
+                <button onclick="removeUser('${id}')" 
+                        class="text-red-500 hover:text-red-600 text-sm font-medium flex items-center gap-1">
+                  <i class="fas fa-trash"></i> Remove
+                </button>` : ''}
+            </div>
+          `;
+          container.appendChild(div);
+        });
+      } catch(e) {
+        console.error("Failed to load users");
+      }
+    }
+
+    async function addNewUser() {
       if (currentUserId !== ADMIN_ID) return;
       const newId = document.getElementById('new-user-id').value.trim().toUpperCase();
       if (!newId) return alert("Enter a User ID");
-      if (allowedUsers.includes(newId)) return alert("User already exists!");
 
-      allowedUsers.push(newId);
-      localStorage.setItem('assassin_allowed_users', JSON.stringify(allowedUsers));
-      document.getElementById('new-user-id').value = '';
-      renderUserList();
-      alert(`✅ User ${newId} added successfully!`);
+      const resp = await fetch('/api/add-user', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ userId: newId, adminId: ADMIN_ID })
+      });
+      const data = await resp.json();
+
+      if (data.success) {
+        document.getElementById('new-user-id').value = '';
+        renderUserList();
+        alert(`✅ User ${newId} added successfully!`);
+      } else {
+        alert("Failed to add user");
+      }
     }
 
-    function removeUser(userId) {
+    async function removeUser(userId) {
       if (currentUserId !== ADMIN_ID) return;
       if (userId === ADMIN_ID) return alert("Cannot remove Admin!");
 
       if (confirm(`Remove user ${userId}?`)) {
-        allowedUsers = allowedUsers.filter(id => id !== userId);
-        localStorage.setItem('assassin_allowed_users', JSON.stringify(allowedUsers));
+        await fetch('/api/remove-user', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ userId, adminId: ADMIN_ID })
+        });
         renderUserList();
       }
-    }
-
-    function renderUserList() {
-      const container = document.getElementById('user-list');
-      container.innerHTML = '';
-      document.getElementById('user-count').textContent = `${allowedUsers.length} total`;
-
-      allowedUsers.forEach(id => {
-        const div = document.createElement('div');
-        div.className = "flex justify-between items-center bg-zinc-900 p-3 rounded-xl";
-        div.innerHTML = `
-          <span class="font-mono ${id === ADMIN_ID ? 'text-red-400' : 'text-white'}">${id}</span>
-          <div class="flex items-center gap-3">
-            <span class="text-xs px-3 py-1 rounded-full ${id === ADMIN_ID ? 'bg-red-500/20 text-red-400' : 'bg-zinc-700 text-zinc-400'}">
-              ${id === ADMIN_ID ? 'ADMIN' : 'USER'}
-            </span>
-            ${id !== ADMIN_ID ? `
-              <button onclick="removeUser('${id}')" 
-                      class="text-red-500 hover:text-red-600 text-sm font-medium flex items-center gap-1">
-                <i class="fas fa-trash"></i> Remove
-              </button>` : ''}
-          </div>
-        `;
-        container.appendChild(div);
-      });
     }
 
     // ====================== REPORTING & MONITORING ======================
@@ -398,6 +419,7 @@
       window.open('https://t.me/+lMNelbcJKMk0N2Iy', '_blank');
     }
 
+    // Keep your existing checkUsername, startMonitorCheck, startMassReport, etc.
     async function startMonitorCheck() {
       let username = document.getElementById('monitor-username').value.trim().replace('@','').toLowerCase();
       if (!username) return;
@@ -546,15 +568,26 @@
     // Auto-login
     window.onload = () => {
       const savedUser = localStorage.getItem('currentUser');
-      if (savedUser && allowedUsers.includes(savedUser)) {
-        currentUserId = savedUser;
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('main-app').classList.remove('hidden');
-        document.getElementById('user-info').innerHTML = `● ${currentUserId}`;
+      if (savedUser) {
+        // Verify with server
+        fetch('/api/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ userId: savedUser })
+        }).then(r => r.json()).then(data => {
+          if (data.success) {
+            currentUserId = savedUser;
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            document.getElementById('user-info').innerHTML = `● ${currentUserId}`;
 
-        if (currentUserId === ADMIN_ID) {
-          document.getElementById('admin-nav').classList.remove('hidden');
-        }
+            if (currentUserId === ADMIN_ID) {
+              document.getElementById('admin-nav').classList.remove('hidden');
+            }
+          } else {
+            localStorage.removeItem('currentUser');
+          }
+        });
       }
     };
   </script>
