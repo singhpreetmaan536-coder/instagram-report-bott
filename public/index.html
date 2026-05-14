@@ -228,7 +228,6 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <!-- Add User -->
           <div>
             <h3 class="text-xl font-semibold mb-4">Add New User</h3>
             <div class="flex gap-3">
@@ -241,7 +240,6 @@
             </div>
           </div>
 
-          <!-- User List -->
           <div>
             <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
               Registered Users 
@@ -255,15 +253,13 @@
   </div>
 
   <script>
-    // ====================== CONFIG ======================
     const ADMIN_ID = "7968968395";
-
     let currentUserId = null;
     let targetUsername = "";
     let reportName = "";
     let count = 0;
     let interval = null;
-    let monitorInterval = null;
+    let liveMonitorInterval = null;
 
     const reports = ["Spam", "Self Harm", "Sale of drugs", "Nudity", "Violence", "Hate", "Harassment", "Impersonation", "Copyright", "Underage", "Sale of firearms", "False information", "Fraud", "Violent threat"];
 
@@ -279,9 +275,7 @@
       });
       const data = await resp.json();
 
-      if (!data.success) {
-        return alert("❌ Invalid or Expired User ID!\nContact @levitism");
-      }
+      if (!data.success) return alert("❌ Invalid or Expired User ID!\nContact @levitism");
 
       currentUserId = inputId;
       localStorage.setItem('currentUser', currentUserId);
@@ -290,9 +284,7 @@
       document.getElementById('main-app').classList.remove('hidden');
       document.getElementById('user-info').innerHTML = `● ${currentUserId}`;
 
-      if (currentUserId === ADMIN_ID) {
-        document.getElementById('admin-nav').classList.remove('hidden');
-      }
+      if (currentUserId === ADMIN_ID) document.getElementById('admin-nav').classList.remove('hidden');
     }
 
     function logout() {
@@ -302,7 +294,7 @@
       }
     }
 
-    // ====================== ADMIN PANEL ======================
+    // ====================== ADMIN ======================
     async function showAdminPanel() {
       if (currentUserId !== ADMIN_ID) return;
       document.getElementById('admin-panel').classList.remove('hidden');
@@ -317,7 +309,6 @@
       try {
         const resp = await fetch('/api/allowed-users');
         const data = await resp.json();
-        
         const container = document.getElementById('user-list');
         container.innerHTML = '';
         document.getElementById('user-count').textContent = `${data.allowedUsers.length} total`;
@@ -331,18 +322,12 @@
               <span class="text-xs px-3 py-1 rounded-full ${id === ADMIN_ID ? 'bg-red-500/20 text-red-400' : 'bg-zinc-700 text-zinc-400'}">
                 ${id === ADMIN_ID ? 'ADMIN' : 'USER'}
               </span>
-              ${id !== ADMIN_ID ? `
-                <button onclick="removeUser('${id}')" 
-                        class="text-red-500 hover:text-red-600 text-sm font-medium flex items-center gap-1">
-                  <i class="fas fa-trash"></i> Remove
-                </button>` : ''}
+              ${id !== ADMIN_ID ? `<button onclick="removeUser('${id}')" class="text-red-500 hover:text-red-600 text-sm font-medium">Remove</button>` : ''}
             </div>
           `;
           container.appendChild(div);
         });
-      } catch(e) {
-        console.error("Failed to load users");
-      }
+      } catch(e) {}
     }
 
     async function addNewUser() {
@@ -356,20 +341,15 @@
         body: JSON.stringify({ userId: newId, adminId: ADMIN_ID })
       });
       const data = await resp.json();
-
       if (data.success) {
         document.getElementById('new-user-id').value = '';
         renderUserList();
         alert(`✅ User ${newId} added successfully!`);
-      } else {
-        alert("Failed to add user");
       }
     }
 
     async function removeUser(userId) {
-      if (currentUserId !== ADMIN_ID) return;
-      if (userId === ADMIN_ID) return alert("Cannot remove Admin!");
-
+      if (currentUserId !== ADMIN_ID || userId === ADMIN_ID) return;
       if (confirm(`Remove user ${userId}?`)) {
         await fetch('/api/remove-user', {
           method: 'POST',
@@ -380,14 +360,14 @@
       }
     }
 
-    // ====================== REPORTING & MONITORING ======================
+    // ====================== NAVIGATION ======================
     function goBackToStart() {
       document.getElementById('report-flow').classList.add('hidden');
       document.getElementById('start-screen').classList.remove('hidden');
     }
 
     function goBackToStartFromMonitor() {
-      if (monitorInterval) clearInterval(monitorInterval);
+      stopLiveMonitor();
       document.getElementById('monitor-section').classList.add('hidden');
       document.getElementById('start-screen').classList.remove('hidden');
     }
@@ -419,53 +399,66 @@
       window.open('https://t.me/+lMNelbcJKMk0N2Iy', '_blank');
     }
 
-    // Keep your existing checkUsername, startMonitorCheck, startMassReport, etc.
+    // ====================== LIVE MONITOR (Every 10 Seconds) ======================
     async function startMonitorCheck() {
       let username = document.getElementById('monitor-username').value.trim().replace('@','').toLowerCase();
-      if (!username) return;
+      if (!username) return alert("Please enter a username");
 
-      const resultDiv = document.getElementById('monitor-result');
-      resultDiv.innerHTML = `<p class="text-yellow-500">🔍 Checking @${username}...</p>`;
+      stopLiveMonitor();
+      document.getElementById('monitor-result').innerHTML = `<p class="text-yellow-500">🔍 Starting continuous monitoring for @${username}...</p>`;
 
-      try {
-        const resp = await fetch('/check-username', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({username})
-        });
-        const data = await resp.json();
-
-        if (data.exists) {
-          resultDiv.innerHTML = `<p class="text-green-400 text-xl mb-4">✅ @${username} is ACTIVE - Monitoring...</p>`;
-          startLiveMonitor(username);
-        } else {
-          resultDiv.innerHTML = `<div class="text-center py-20 banned"><h2 class="text-5xl font-bold text-red-500 mb-4">🚫 USERNAME BANNED / NOT FOUND</h2><p class="text-red-400">@${username}</p></div>`;
-        }
-      } catch(e) {
-        resultDiv.innerHTML = `<p class="text-red-500">❌ Server Error</p>`;
-      }
+      startLiveMonitor(username);
     }
 
     function startLiveMonitor(username) {
-      let monitorCount = 0;
       const resultDiv = document.getElementById('monitor-result');
-      if (monitorInterval) clearInterval(monitorInterval);
+      let checkCount = 0;
 
-      monitorInterval = setInterval(() => {
-        monitorCount++;
-        const log = document.createElement('div');
-        log.className = "log-row flex justify-between py-3 border-b border-zinc-800 last:border-none";
-        log.innerHTML = `
-          <span class="text-cyan-400">#${monitorCount}</span>
-          <span class="text-zinc-400">${new Date().toLocaleTimeString()}</span>
-          <span class="text-green-500 font-bold">ACTIVE</span>
-          <span class="text-white">@${username}</span>
-        `;
-        resultDiv.appendChild(log);
-        resultDiv.scrollTop = resultDiv.scrollHeight;
-      }, 2500);
+      liveMonitorInterval = setInterval(async () => {
+        checkCount++;
+        const time = new Date().toLocaleTimeString();
+
+        try {
+          const resp = await fetch('/check-username', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username})
+          });
+          const data = await resp.json();
+
+          if (data.exists) {
+            resultDiv.innerHTML = `
+              <div class="text-center mb-6">
+                <p class="text-green-400 text-3xl font-bold">✅ @${username} IS ACTIVE</p>
+                <p class="text-zinc-400 mt-2">Checked: ${time} • Attempt: ${checkCount}</p>
+              </div>
+              <div class="bg-green-900/30 border border-green-500 rounded-2xl p-5 text-center">
+                <p class="text-green-400">Monitoring every 10 seconds...</p>
+              </div>
+            `;
+          } else {
+            resultDiv.innerHTML = `
+              <div class="text-center py-20 banned">
+                <h2 class="text-5xl font-bold text-red-500 mb-4">🚫 BANNED / NOT FOUND</h2>
+                <p class="text-red-400 text-2xl">@${username}</p>
+                <p class="text-zinc-400 mt-6">Last checked: ${time} • Attempt: ${checkCount}</p>
+              </div>
+            `;
+          }
+        } catch(e) {
+          resultDiv.innerHTML = `<p class="text-red-500 text-center">[${time}] Connection error... Retrying...</p>`;
+        }
+      }, 10000);
     }
 
+    function stopLiveMonitor() {
+      if (liveMonitorInterval) {
+        clearInterval(liveMonitorInterval);
+        liveMonitorInterval = null;
+      }
+    }
+
+    // ====================== REPORTING ======================
     async function checkUsername() {
       let username = document.getElementById('username').value.trim().replace('@','').toLowerCase();
       if (!username) return;
@@ -538,7 +531,7 @@
         table.appendChild(row);
         table.scrollTop = table.scrollHeight;
         document.getElementById('report-count').textContent = `${count} reports`;
-      }, 1000);
+      }, 480);
     }
 
     function stopReporting() {
@@ -555,21 +548,16 @@
     // Keyboard Support
     document.addEventListener('keydown', function(e) {
       if (e.key === "Enter") {
-        if (!document.getElementById('login-screen').classList.contains('hidden')) {
-          login();
-        } else if (!document.getElementById('username-step').classList.contains('hidden')) {
-          checkUsername();
-        } else if (!document.getElementById('monitor-section').classList.contains('hidden')) {
-          startMonitorCheck();
-        }
+        if (!document.getElementById('login-screen').classList.contains('hidden')) login();
+        else if (!document.getElementById('username-step').classList.contains('hidden')) checkUsername();
+        else if (!document.getElementById('monitor-section').classList.contains('hidden')) startMonitorCheck();
       }
     });
 
-    // Auto-login
+    // Auto Login
     window.onload = () => {
       const savedUser = localStorage.getItem('currentUser');
       if (savedUser) {
-        // Verify with server
         fetch('/api/login', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -580,16 +568,18 @@
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('main-app').classList.remove('hidden');
             document.getElementById('user-info').innerHTML = `● ${currentUserId}`;
-
-            if (currentUserId === ADMIN_ID) {
-              document.getElementById('admin-nav').classList.remove('hidden');
-            }
+            if (currentUserId === ADMIN_ID) document.getElementById('admin-nav').classList.remove('hidden');
           } else {
             localStorage.removeItem('currentUser');
           }
         });
       }
     };
+
+    window.addEventListener('beforeunload', () => {
+      stopLiveMonitor();
+      if (interval) clearInterval(interval);
+    });
   </script>
 </body>
 </html>
